@@ -9,3 +9,5 @@ gen/mssql/users.json
 gen/postgres/drivers.json
 
 .idea/
+
+.databricks

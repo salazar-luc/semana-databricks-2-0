@@ -1,0 +1,9 @@
+bundle:
+  name: semana-databricks-2-0
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-fa899e55-82f1.cloud.databricks.com
