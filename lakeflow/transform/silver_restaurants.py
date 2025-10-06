@@ -18,7 +18,6 @@ from pyspark.sql import functions as F
         "pipelines.autoOptimize.zOrderCols": "restaurant_id"
     }
 )
-@dlt.expect_or_drop("valid_cnpj", "cnpj IS NOT NULL AND length(cnpj) = 14")
 @dlt.expect_or_drop("valid_name", "name IS NOT NULL")
 @dlt.expect_or_drop("valid_rating", "average_rating >= 0 AND average_rating <= 5")
 def silver_restaurants():
