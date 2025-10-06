@@ -7,3 +7,5 @@ gen/.env
 gen/azure/uber-eats.json
 gen/mssql/users.json
 gen/postgres/drivers.json
+
+.idea/
