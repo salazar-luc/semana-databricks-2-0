@@ -7,17 +7,33 @@
 
 ## Setup
 
-### Pull ShadowTraffic Container
+### 1. Navigate to gen directory
+```bash
+cd gen
+```
+
+### 2. Create config files from templates
+Run the setup script to automatically create config files with your credentials:
+
+```bash
+./setup-configs.sh
+```
+
+This script will:
+- Copy template files to actual config files
+- Replace all placeholders with values from `.env`
+- Create ready-to-use ShadowTraffic configurations
+
+**Manual alternative:** If you prefer to do it manually, see the commands in the script.
+
+**Note:** The actual config files (`*.json`) are git-ignored and contain your credentials. Only templates (`*.json.template`) are tracked in git.
+
+### 3. Pull ShadowTraffic Container
 ```bash
 docker pull shadowtraffic/shadowtraffic:latest
 ```
 
 ## Running Data Generators
-
-**Important:** Navigate to the `gen/` directory before running commands:
-```bash
-cd gen
-```
 
 ### 1. Uber Eats → Azure Blob Storage
 Generates comprehensive event data (orders, payments, GPS tracking, etc.) to Azure Data Lake:
@@ -87,7 +103,7 @@ docker logs -f <container_id>
 
 **Error: File not found**
 - Ensure you're in the `gen/` directory when running commands
-- Verify JSON config files exist
+- Verify JSON config files exist (run `./setup-configs.sh` if needed)
 
 **Error: Permission denied**
 - Check Docker is running
@@ -95,5 +111,7 @@ docker logs -f <container_id>
 
 ## Security Notes
 - `.env` file is git-ignored and contains sensitive credentials
-- Never commit `.env` or `st-key.env` to version control
-- See `.env.template` for required environment variables structure
+- Config files (`*.json`) are git-ignored and contain credentials
+- Never commit `.env`, `st-key.env`, or `*.json` files to version control
+- Only template files (`*.json.template`) are tracked in git
+- Use `./setup-configs.sh` to regenerate config files when needed

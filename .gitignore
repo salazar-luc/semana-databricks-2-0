@@ -1,4 +1,9 @@
+.DS_Store
 
 gen/st-key.env
-
 gen/.env
+.env
+
+gen/azure/uber-eats.json
+gen/mssql/users.json
+gen/postgres/drivers.json
