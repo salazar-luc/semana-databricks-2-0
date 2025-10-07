@@ -3,7 +3,7 @@ name: Sync Fork
 on:
   schedule:
     - cron: '0 * * * *' # roda a cada hora
-  workflow_dispatch: # permite rodar manualmente
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -21,5 +21,5 @@ jobs:
         run: |
           git remote add upstream https://github.com/owshq-mec/semana-databricks-2-0.git
           git fetch upstream
-          git merge upstream/main
+          git merge upstream/main --allow-unrelated-histories
           git push origin main
