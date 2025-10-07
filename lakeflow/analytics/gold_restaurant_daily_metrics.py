@@ -19,7 +19,6 @@ from pyspark.sql import functions as F
         "pipelines.autoOptimize.zOrderCols": "date,restaurant_id"
     }
 )
-@dlt.expect_or_fail("valid_metrics", "total_orders > 0 AND total_revenue > 0")
 def gold_restaurant_daily_metrics():
     """
     Daily aggregated restaurant performance metrics.

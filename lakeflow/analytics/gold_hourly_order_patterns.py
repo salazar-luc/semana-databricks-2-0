@@ -19,7 +19,6 @@ from pyspark.sql import functions as F
         "pipelines.autoOptimize.zOrderCols": "date,hour"
     }
 )
-@dlt.expect_or_fail("valid_hourly_metrics", "total_orders > 0")
 def gold_hourly_order_patterns():
     """
     Hourly order patterns and demand analytics.

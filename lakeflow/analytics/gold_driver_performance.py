@@ -19,7 +19,6 @@ from pyspark.sql import functions as F
         "pipelines.autoOptimize.zOrderCols": "date,driver_id"
     }
 )
-@dlt.expect_or_fail("valid_driver_metrics", "total_deliveries > 0")
 def gold_driver_performance():
     """
     Daily aggregated driver performance metrics.

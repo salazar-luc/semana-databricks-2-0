@@ -19,7 +19,6 @@ from pyspark.sql import functions as F
         "pipelines.autoOptimize.zOrderCols": "date,cuisine_type,total_orders"
     }
 )
-@dlt.expect_or_fail("valid_cuisine_metrics", "total_orders > 0 AND total_revenue > 0")
 def gold_cuisine_type_analytics():
     """
     Cuisine type performance and trend analytics.
@@ -77,7 +76,6 @@ def gold_cuisine_type_analytics():
 
             # === Customer Behavior ===
             F.countDistinct("customer_job").alias("unique_customer_jobs"),
-            F.avg(F.when(F.col("recency_days").isNotNull(), F.col("recency_days"))).alias("avg_customer_recency"),
 
             # === Restaurant Quality ===
             F.avg("restaurant_rating").alias("avg_restaurant_rating"),

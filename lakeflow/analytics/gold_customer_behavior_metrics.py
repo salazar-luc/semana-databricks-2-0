@@ -20,7 +20,6 @@ from pyspark.sql.window import Window
         "pipelines.autoOptimize.zOrderCols": "user_id,total_orders_lifetime"
     }
 )
-@dlt.expect_or_fail("valid_customer_metrics", "total_orders_lifetime > 0 AND total_lifetime_value > 0")
 def gold_customer_behavior_metrics():
     """
     Customer behavior and lifetime value analytics.

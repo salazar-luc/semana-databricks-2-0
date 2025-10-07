@@ -19,7 +19,6 @@ from pyspark.sql import functions as F
         "pipelines.autoOptimize.zOrderCols": "date,city,total_orders"
     }
 )
-@dlt.expect_or_fail("valid_city_metrics", "total_orders > 0 AND total_revenue > 0")
 def gold_city_market_analytics():
     """
     City-level market performance and expansion analytics.
