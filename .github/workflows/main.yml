@@ -1,0 +1,25 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: '0 * * * *' # roda a cada hora
+  workflow_dispatch: # permite rodar manualmente
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout seu repositório
+        uses: actions/checkout@v3
+
+      - name: Configurar Git
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+      - name: Adicionar upstream
+        run: |
+          git remote add upstream https://github.com/owshq-mec/semana-databricks-2-0.git
+          git fetch upstream
+          git merge upstream/main
+          git push origin main
