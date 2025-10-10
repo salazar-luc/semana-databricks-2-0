@@ -37,7 +37,7 @@ def silver_status():
     """
 
     # Read from Bronze layer (streaming)
-    bronze_df = dlt.read_stream("semana.default.bronze_kafka_status")
+    bronze_df = dlt.read_stream("bronze_kafka_status")
 
     # Flatten and transform data
     return (

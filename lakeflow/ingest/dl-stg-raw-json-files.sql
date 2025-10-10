@@ -1,4 +1,4 @@
-CREATE OR REFRESH STREAMING TABLE semana.default.bronze_mssql_users(
+CREATE OR REFRESH STREAMING TABLE bronze_mssql_users(
   CONSTRAINT no_rescued_data
   EXPECT (_rescued_data IS NULL)
 )
@@ -12,11 +12,11 @@ AS SELECT
   _metadata.file_path AS source_file,
   _metadata.file_modification_time AS ingestion_time
 FROM STREAM read_files(
-  '/Volumes/semana/default/vol-owshq-shadow-traffic/mssql_users_*',
+  '${source_volume_path}/mssql/*',
   format => 'json'
 );
 
-CREATE OR REFRESH STREAMING TABLE semana.default.bronze_postgres_drivers(
+CREATE OR REFRESH STREAMING TABLE bronze_postgres_drivers(
   CONSTRAINT no_rescued_data
   EXPECT (_rescued_data IS NULL)
 )
@@ -30,11 +30,11 @@ AS SELECT
   _metadata.file_path AS source_file,
   _metadata.file_modification_time AS ingestion_time
 FROM STREAM read_files(
-  '/Volumes/semana/default/vol-owshq-shadow-traffic/postgres_drivers_*',
+  '${source_volume_path}/postgres/*',
   format => 'json'
 );
 
-CREATE OR REFRESH STREAMING TABLE semana.default.bronze_mysql_restaurants(
+CREATE OR REFRESH STREAMING TABLE bronze_mysql_restaurants(
   CONSTRAINT no_rescued_data
   EXPECT (_rescued_data IS NULL)
 )
@@ -48,11 +48,11 @@ AS SELECT
   _metadata.file_path AS source_file,
   _metadata.file_modification_time AS ingestion_time
 FROM STREAM read_files(
-  '/Volumes/semana/default/vol-owshq-shadow-traffic/mysql_restaurants_*',
+  '${source_volume_path}/mysql/*',
   format => 'json'
 );
 
-CREATE OR REFRESH STREAMING TABLE semana.default.bronze_kafka_orders(
+CREATE OR REFRESH STREAMING TABLE bronze_kafka_orders(
   CONSTRAINT no_rescued_data
   EXPECT (_rescued_data IS NULL)
 )
@@ -66,11 +66,11 @@ AS SELECT
   _metadata.file_path AS source_file,
   _metadata.file_modification_time AS ingestion_time
 FROM STREAM read_files(
-  '/Volumes/semana/default/vol-owshq-shadow-traffic/kafka_orders_*',
+  '${source_volume_path}/kafka/orders/*',
   format => 'json'
 );
 
-CREATE OR REFRESH STREAMING TABLE semana.default.bronze_kafka_status(
+CREATE OR REFRESH STREAMING TABLE bronze_kafka_status(
   CONSTRAINT no_rescued_data
   EXPECT (_rescued_data IS NULL)
 )
@@ -84,7 +84,7 @@ AS SELECT
   _metadata.file_path AS source_file,
   _metadata.file_modification_time AS ingestion_time
 FROM STREAM read_files(
-  '/Volumes/semana/default/vol-owshq-shadow-traffic/kafka_status_*',
+  '${source_volume_path}/kafka/status/*',
   format => 'json'
 );
 
