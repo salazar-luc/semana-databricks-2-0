@@ -1,13 +1,48 @@
+# macOS
 .DS_Store
 
+# Environment variables
 gen/st-key.env
 gen/.env
 .env
 
+# Generated data files
 gen/azure/uber-eats.json
 gen/mssql/users.json
 gen/postgres/drivers.json
 
+# IDE
 .idea/
+.vscode/
 
+# Databricks CLI
 .databricks
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfplan
+terraform/*.log
+terraform/credentials.auto.tfvars
+terraform/.terraform.tfstate.lock.info
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Temporary files
+*.tmp
+*.bak
+*~

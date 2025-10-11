@@ -33,7 +33,7 @@ def silver_drivers():
     """
 
     # Read from Bronze layer (streaming)
-    bronze_df = dlt.read_stream("semana.default.bronze_postgres_drivers")
+    bronze_df = dlt.read_stream("bronze_postgres_drivers")
 
     # Clean and transform data
     return (

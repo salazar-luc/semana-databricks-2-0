@@ -1,0 +1,26 @@
+prefix   = "ubereats"
+location = "eastus2"
+
+resource_tags = {
+  Owner        = "Delivery Services"
+  CostCenter   = "One Way Solution"
+  BusinessUnit = "Data"
+  Project      = "UberEats"
+  Environment  = "Development"
+}
+
+enable_unity_catalog     = true
+enable_ml_integration    = true
+enable_streaming         = true
+enable_alerts            = true
+enable_private_endpoints = false
+
+bypass_ip_ranges = [
+]
+
+databricks_sku = "premium"
+
+environment             = "dev"
+deploy_all_environments = false
+
+databricks_host = "https://adb-1534253026459286.6.azuredatabricks.net"

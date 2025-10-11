@@ -30,7 +30,7 @@ def silver_users():
     """
 
     # Read from Bronze layer (streaming)
-    bronze_df = dlt.read_stream("semana.default.bronze_mssql_users")
+    bronze_df = dlt.read_stream("bronze_mssql_users")
 
     # Clean and transform data
     return (

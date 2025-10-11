@@ -34,7 +34,7 @@ def silver_orders():
     """
 
     # Read from Bronze layer (streaming)
-    bronze_df = dlt.read_stream("semana.default.bronze_kafka_orders")
+    bronze_df = dlt.read_stream("bronze_kafka_orders")
 
     # Clean and transform data
     return (

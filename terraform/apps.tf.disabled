@@ -1,0 +1,128 @@
+# ==============================================================================
+# Databricks Apps: Full-Stack Applications
+# ==============================================================================
+# This file configures Databricks Apps for deploying full-stack applications
+# that consume data from the Lakehouse (gold tables, SQL warehouses).
+
+variable "enable_databricks_apps" {
+  description = "Whether to enable Databricks Apps"
+  type        = bool
+  default     = true
+}
+
+# SQL Warehouse for Apps (dedicated compute for app queries)
+resource "databricks_sql_endpoint" "apps_warehouse" {
+  for_each = var.enable_databricks_apps ? toset(local.environments) : []
+
+  name                      = "${local.env_config[each.key].name_prefix}-apps-warehouse"
+  warehouse_type            = "PRO"
+  cluster_size              = "2X-Small"
+  max_num_clusters          = 1
+  min_num_clusters          = 1
+  auto_stop_mins            = 10
+  enable_photon             = true
+  enable_serverless_compute = true
+
+  # NOTE: SQL endpoint tags are not supported in provider v1.50.0
+  # Tags can be added in later provider versions
+}
+
+# App Service Principal (for app authentication)
+resource "databricks_service_principal" "app_user" {
+  for_each = var.enable_databricks_apps ? toset(local.environments) : []
+
+  display_name         = "${local.env_config[each.key].name_prefix}-app-service-principal"
+  allow_cluster_create = false
+}
+
+# Grant app service principal access to SQL warehouse
+resource "databricks_permissions" "app_warehouse_usage" {
+  for_each = var.enable_databricks_apps ? toset(local.environments) : []
+
+  sql_endpoint_id = databricks_sql_endpoint.apps_warehouse[each.key].id
+
+  access_control {
+    service_principal_name = databricks_service_principal.app_user[each.key].application_id
+    permission_level       = "CAN_USE"
+  }
+
+  depends_on = [
+    databricks_sql_endpoint.apps_warehouse,
+    databricks_service_principal.app_user
+  ]
+}
+
+# Grant app service principal access to gold schema (read-only)
+resource "databricks_grants" "app_gold_access" {
+  for_each = var.enable_databricks_apps && local.unity_catalog_enabled ? {
+    for pair in setproduct(local.environments, ["ubereats_delivery_services"]) : "${pair[0]}-${pair[1]}" => {
+      env    = pair[0]
+      domain = pair[1]
+    }
+  } : {}
+
+  catalog = databricks_catalog.domains["${each.value.env}-${each.value.domain}"].name
+  schema  = databricks_schema.medallion["${each.value.env}-${each.value.domain}-gold"].name
+
+  grant {
+    principal  = databricks_service_principal.app_user[each.value.env].display_name
+    privileges = ["USE_SCHEMA", "SELECT"]
+  }
+
+  depends_on = [
+    databricks_service_principal.app_user,
+    databricks_schema.medallion
+  ]
+}
+
+# NOTE: Databricks Apps (databricks_app resource) require provider v1.60+
+# Commented out for compatibility with v1.50.0
+# Uncomment and update provider version when ready to use Databricks Apps
+#
+# # Databricks App - UberEats Analytics Dashboard
+# resource "databricks_app" "ubereats_analytics" {
+#   for_each = var.enable_databricks_apps ? toset(local.environments) : []
+#
+#   name        = "${local.env_config[each.key].name_prefix}-analytics-app"
+#   description = "UberEats Analytics Dashboard - Full-stack app consuming gold tables"
+#
+#   resources {
+#     name = "analytics-warehouse"
+#     sql_warehouse {
+#       id = databricks_sql_endpoint.apps_warehouse[each.key].id
+#     }
+#   }
+#
+#   tags = [
+#     "ubereats",
+#     "analytics",
+#     each.key
+#   ]
+# }
+
+# Store App credentials in secrets
+resource "databricks_secret" "app_sp_id" {
+  for_each = var.enable_databricks_apps ? toset(local.environments) : []
+
+  key          = "app_service_principal_id"
+  string_value = databricks_service_principal.app_user[each.key].application_id
+  scope        = databricks_secret_scope.this[each.key].name
+}
+
+# Output app URLs for easy access
+# Commented out because databricks_app resource requires provider v1.60+
+# output "app_urls" {
+#   description = "URLs for Databricks Apps"
+#   value = {
+#     for env in keys(databricks_app.ubereats_analytics) :
+#     env => databricks_app.ubereats_analytics[env].url
+#   }
+# }
+
+output "app_warehouse_endpoints" {
+  description = "SQL Warehouse endpoints for Databricks Apps"
+  value = {
+    for env in keys(databricks_sql_endpoint.apps_warehouse) :
+    env => databricks_sql_endpoint.apps_warehouse[env].jdbc_url
+  }
+}

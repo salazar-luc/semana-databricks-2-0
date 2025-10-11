@@ -1,0 +1,110 @@
+bundle:
+  name: lakeflow-uber-eats
+
+variables:
+  catalog:
+    description: Unity Catalog name
+    default: semana
+
+  schema:
+    description: Schema name
+    default: default
+
+  source_volume_path:
+    description: Source data volume path (environment-specific)
+    default: /Volumes/semana/default/vol-owshq-shadow-traffic
+
+targets:
+  # AWS Development - Current working environment
+  aws:
+    mode: development
+    workspace:
+      host: https://dbc-fa899e55-82f1.cloud.databricks.com
+    variables:
+      catalog: semana
+      schema: default
+      source_volume_path: /Volumes/semana/default/vol-owshq-shadow-traffic
+
+  # Azure Development - New deployment target (uses ADLS external location)
+  azure_dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-2090585310411504.4.azuredatabricks.net
+    variables:
+      catalog: semana
+      schema: default
+      source_volume_path: abfss://owshq-shadow-traffic@owshqblobstg.dfs.core.windows.net
+
+  # Azure Production - Production environment with ADLS path
+  azure_prod:
+    mode: production
+    workspace:
+      host: https://adb-2090585310411504.4.azuredatabricks.net
+    variables:
+      catalog: semana
+      schema: default
+      source_volume_path: abfss://owshq-shadow-traffic@owshqblobstg.dfs.core.windows.net
+
+    # Override pipeline settings for production
+    resources:
+      pipelines:
+        lakeflow_uber_eats:
+          development: false
+          continuous: true
+
+resources:
+  pipelines:
+    lakeflow_uber_eats:
+      name: lakeflow-elt-uber-eats-${bundle.target}
+
+      # Unity Catalog configuration
+      catalog: ${var.catalog}
+      target: ${var.schema}
+
+      # Pipeline settings
+      development: true
+      continuous: false
+      photon: true
+      channel: CURRENT
+      serverless: true
+
+      # Configuration parameters passed to DLT notebooks
+      configuration:
+        source_volume_path: ${var.source_volume_path}
+        catalog_name: ${var.catalog}
+        schema_name: ${var.schema}
+
+      # Lakeflow libraries
+      libraries:
+        # Bronze layer ingestion (SQL)
+        - file:
+            path: ./ingest/dl-stg-raw-json-files.sql
+
+        # Silver layer transformations
+        - file:
+            path: ./transform/silver_drivers.py
+        - file:
+            path: ./transform/silver_orders.py
+        - file:
+            path: ./transform/silver_restaurants.py
+        - file:
+            path: ./transform/silver_status.py
+        - file:
+            path: ./transform/silver_users.py
+        - file:
+            path: ./transform/silver_orders_enriched.py
+
+        # Gold layer analytics
+        - file:
+            path: ./analytics/gold_city_market_analytics.py
+        - file:
+            path: ./analytics/gold_cuisine_type_analytics.py
+        - file:
+            path: ./analytics/gold_customer_behavior_metrics.py
+        - file:
+            path: ./analytics/gold_driver_performance.py
+        - file:
+            path: ./analytics/gold_hourly_order_patterns.py
+        - file:
+            path: ./analytics/gold_restaurant_daily_metrics.py

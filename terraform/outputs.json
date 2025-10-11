@@ -1,0 +1,55 @@
+{
+  "app_insights_instrumentation_key": {
+    "sensitive": true,
+    "type": [
+      "object",
+      {
+        "dev": "string"
+      }
+    ],
+    "value": {
+      "dev": "e1b071c9-6935-4231-868b-0288a89d9f09"
+    }
+  },
+  "catalog_names": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "dev-ubereats_delivery_services": "string"
+      }
+    ],
+    "value": {
+      "dev-ubereats_delivery_services": "dev_ubereats_delivery_services"
+    }
+  },
+  "databricks_workspace_urls": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "dev": "string"
+      }
+    ],
+    "value": {
+      "dev": "adb-1534253026459286.6.azuredatabricks.net"
+    }
+  },
+  "metastore_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": ""
+  },
+  "storage_account_names": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "dev": "string"
+      }
+    ],
+    "value": {
+      "dev": "adlsubereatsdev20d8"
+    }
+  }
+}

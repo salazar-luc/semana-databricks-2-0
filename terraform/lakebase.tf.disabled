@@ -1,0 +1,99 @@
+# ==============================================================================
+# Lakebase: Postgres Managed Database Connection
+# ==============================================================================
+# This file configures Databricks Lakehouse Federation to connect to Railway
+# Postgres for accessing driver data directly from the managed database.
+
+variable "postgres_host" {
+  description = "Railway Postgres host"
+  type        = string
+  default     = ""
+}
+
+variable "postgres_port" {
+  description = "Railway Postgres port"
+  type        = string
+  default     = "5432"
+}
+
+variable "postgres_database" {
+  description = "Railway Postgres database name"
+  type        = string
+  default     = "railway"
+}
+
+variable "postgres_user" {
+  description = "Railway Postgres username"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "postgres_password" {
+  description = "Railway Postgres password"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Postgres Connection for Lakehouse Federation
+resource "databricks_connection" "railway_postgres" {
+  for_each = var.postgres_host != "" ? toset(local.environments) : []
+
+  name            = "${each.key}_railway_postgres"
+  connection_type = "POSTGRESQL"
+  comment         = "Railway Postgres connection for driver data (Lakebase)"
+
+  options = {
+    host     = var.postgres_host
+    port     = var.postgres_port
+    database = var.postgres_database
+    user     = var.postgres_user
+  }
+
+  properties = {
+    purpose     = "Lakehouse Federation - Drivers Table"
+    environment = each.key
+    source      = "Railway Managed Postgres"
+  }
+}
+
+# NOTE: The 'connection' parameter for databricks_grants doesn't exist in provider v1.50.0
+# This feature is available in newer provider versions
+# Commented out for compatibility with v1.50.0
+#
+# # Grant permissions to data engineers to query Postgres
+# resource "databricks_grants" "postgres_connection" {
+#   for_each = var.postgres_host != "" ? toset(local.environments) : []
+#
+#   connection = databricks_connection.railway_postgres[each.key].name
+#
+#   grant {
+#     principal  = databricks_group.data_engineers.display_name
+#     privileges = ["USE_CONNECTION", "CREATE_FOREIGN_CATALOG"]
+#   }
+#
+#   grant {
+#     principal  = databricks_group.data_scientists.display_name
+#     privileges = ["USE_CONNECTION"]
+#   }
+#
+#   depends_on = [databricks_connection.railway_postgres]
+# }
+
+# Store Postgres password in Databricks secrets
+resource "databricks_secret" "postgres_password" {
+  for_each = nonsensitive(var.postgres_password) != "" ? toset(local.environments) : []
+
+  key          = "postgres_password"
+  string_value = var.postgres_password
+  scope        = databricks_secret_scope.this[each.key].name
+}
+
+resource "databricks_secret" "postgres_user" {
+  for_each = nonsensitive(var.postgres_user) != "" ? toset(local.environments) : []
+
+  key          = "postgres_user"
+  string_value = var.postgres_user
+  scope        = databricks_secret_scope.this[each.key].name
+}

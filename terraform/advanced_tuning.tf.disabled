@@ -1,0 +1,322 @@
+# ==============================================================================
+# Advanced Cluster Tuning
+# ==============================================================================
+# This file contains advanced cluster configurations for specific workload types
+# demonstrating hardcore performance optimization techniques.
+
+# ==============================================================================
+# Heavy ETL/Batch Processing Cluster
+# ==============================================================================
+
+resource "databricks_cluster" "heavy_etl_optimized" {
+  for_each = toset(local.environments) # Only create in prod
+
+  cluster_name            = "${local.env_config[each.key].name_prefix}-etl-heavy-optimized"
+  spark_version           = var.spark_version
+  node_type_id            = "Standard_E8ds_v4" # Memory-optimized nodes
+  autotermination_minutes = 30
+  data_security_mode      = "USER_ISOLATION"
+
+  autoscale {
+    min_workers = 4
+    max_workers = 20
+  }
+
+  # Aggressive memory and shuffle optimization for large ETL
+  spark_conf = {
+    # Memory Management - Maximize execution memory
+    "spark.memory.fraction"        = "0.85"
+    "spark.memory.storageFraction" = "0.2"
+
+    # Shuffle Optimization - Large shuffle partitions for big data
+    "spark.sql.shuffle.partitions"                           = "400"
+    "spark.sql.adaptive.coalescePartitions.minPartitionSize" = "128MB"
+
+    # Delta Lake Write Optimization
+    "spark.databricks.delta.optimizeWrite.enabled"   = "true"
+    "spark.databricks.delta.optimizeWrite.binSize"   = "2048"
+    "spark.databricks.delta.autoCompact.enabled"     = "true"
+    "spark.databricks.delta.autoCompact.minNumFiles" = "50"
+
+    # Adaptive Query Execution
+    "spark.sql.adaptive.enabled"                    = "true"
+    "spark.sql.adaptive.skewJoin.enabled"           = "true"
+    "spark.sql.adaptive.localShuffleReader.enabled" = "true"
+
+    # Broadcast joins optimization
+    "spark.sql.autoBroadcastJoinThreshold" = "100MB"
+
+    # I/O and Caching
+    "spark.databricks.io.cache.enabled"      = "true"
+    "spark.databricks.io.cache.maxDiskUsage" = "200g"
+    "spark.sql.files.maxPartitionBytes"      = "256MB"
+
+    # Compression
+    "spark.sql.parquet.compression.codec" = "snappy"
+    "spark.io.compression.codec"          = "snappy"
+
+    # Parallelism
+    "spark.default.parallelism" = "400"
+  }
+
+  # Photon is enabled by default in v15.4.x-photon runtime
+
+  custom_tags = {
+    "WorkloadType" = "Heavy ETL"
+    "Optimization" = "Memory + Shuffle + I/O"
+    "Purpose"      = "Large-scale batch processing"
+  }
+}
+
+# ==============================================================================
+# ML Training Cluster (GPU-enabled)
+# ==============================================================================
+
+resource "databricks_cluster" "ml_training_gpu" {
+  for_each = toset(local.environments)
+
+  cluster_name            = "${local.env_config[each.key].name_prefix}-ml-training-gpu"
+  spark_version           = "15.4.x-gpu-ml-scala2.12"
+  node_type_id            = "Standard_NC6s_v3" # GPU nodes
+  autotermination_minutes = 60
+  data_security_mode      = "USER_ISOLATION"
+
+  autoscale {
+    min_workers = 2
+    max_workers = 8
+  }
+
+  spark_conf = {
+    # GPU Memory Management
+    "spark.rapids.memory.pinnedPool.size" = "2G"
+    "spark.rapids.sql.enabled"            = "true"
+
+    # ML-specific optimizations
+    "spark.python.worker.memory" = "8g"
+    "spark.executor.memory"      = "16g"
+    "spark.driver.memory"        = "32g"
+
+    # Serialization for ML models
+    "spark.serializer"                = "org.apache.spark.serializer.KryoSerializer"
+    "spark.kryoserializer.buffer.max" = "2g"
+
+    # Delta optimizations for feature tables
+    "spark.databricks.delta.optimizeWrite.enabled" = "true"
+  }
+
+  # GPU clusters don't use Photon acceleration
+
+  # ML libraries
+  library {
+    pypi {
+      package = "scikit-learn==1.3.0"
+    }
+  }
+
+  library {
+    pypi {
+      package = "xgboost==2.0.0"
+    }
+  }
+
+  custom_tags = {
+    "WorkloadType" = "ML Training"
+    "GPUEnabled"   = "true"
+    "Purpose"      = "Model training with GPU acceleration"
+  }
+}
+
+# ==============================================================================
+# Real-Time Analytics Cluster (Lowest Latency)
+# ==============================================================================
+
+resource "databricks_cluster" "realtime_analytics" {
+  for_each = toset(local.environments)
+
+  cluster_name            = "${local.env_config[each.key].name_prefix}-realtime-analytics"
+  spark_version           = var.spark_version
+  node_type_id            = "Standard_F8s_v2" # Compute-optimized
+  autotermination_minutes = 10
+  data_security_mode      = "USER_ISOLATION"
+
+  autoscale {
+    min_workers = 2
+    max_workers = 10
+  }
+
+  # Low-latency optimizations
+  spark_conf = {
+    # Minimize shuffle for low latency
+    "spark.sql.shuffle.partitions"                  = "100"
+    "spark.sql.adaptive.enabled"                    = "true"
+    "spark.sql.adaptive.coalescePartitions.enabled" = "true"
+
+    # Aggressive broadcast joins
+    "spark.sql.autoBroadcastJoinThreshold" = "200MB"
+
+    # Delta cache for repeated queries
+    "spark.databricks.io.cache.enabled"             = "true"
+    "spark.databricks.io.cache.compression.enabled" = "false" # Trade space for speed
+
+    # Whole-stage code generation
+    "spark.sql.codegen.wholeStage"  = "true"
+    "spark.sql.codegen.factoryMode" = "CODEGEN_ONLY"
+
+    # Reduce task scheduling overhead
+    "spark.scheduler.mode" = "FAIR"
+    "spark.locality.wait"  = "1s"
+
+    # Columnar processing
+    "spark.sql.inMemoryColumnarStorage.compressed" = "true"
+    "spark.sql.inMemoryColumnarStorage.batchSize"  = "20000"
+  }
+
+  # Photon is enabled by default in v15.4.x-photon runtime (critical for low-latency queries)
+
+  custom_tags = {
+    "WorkloadType" = "Real-Time Analytics"
+    "Optimization" = "Low Latency"
+    "Purpose"      = "Sub-second query response"
+  }
+}
+
+# ==============================================================================
+# Cost-Optimized Cluster (Spot instances)
+# ==============================================================================
+
+resource "databricks_cluster" "cost_optimized" {
+  for_each = toset(local.environments)
+
+  cluster_name            = "${local.env_config[each.key].name_prefix}-cost-optimized"
+  spark_version           = var.spark_version
+  node_type_id            = "Standard_DS3_v2"
+  autotermination_minutes = 10
+  data_security_mode      = "USER_ISOLATION"
+
+  autoscale {
+    min_workers = 1
+    max_workers = 5
+  }
+
+  # Use spot instances for cost savings
+  azure_attributes {
+    availability       = "SPOT_AZURE"
+    first_on_demand    = 1  # Keep driver on-demand
+    spot_bid_max_price = -1 # Use default spot pricing
+  }
+
+  spark_conf = {
+    # Optimize for cost, not speed
+    "spark.sql.shuffle.partitions"                 = "100"
+    "spark.databricks.delta.optimizeWrite.enabled" = "true"
+    "spark.databricks.delta.autoCompact.enabled"   = "true"
+    "spark.sql.adaptive.enabled"                   = "true"
+  }
+
+  # Photon disabled to save on DBU costs (use non-Photon runtime)
+
+  custom_tags = {
+    "WorkloadType"  = "Development"
+    "Optimization"  = "Cost"
+    "SpotInstances" = "true"
+  }
+}
+
+# ==============================================================================
+# Small Data Processing Cluster (Single Node)
+# ==============================================================================
+
+resource "databricks_cluster" "single_node" {
+  for_each = toset(local.environments)
+
+  cluster_name            = "${local.env_config[each.key].name_prefix}-single-node"
+  spark_version           = var.spark_version
+  node_type_id            = "Standard_DS4_v2"
+  autotermination_minutes = 15
+  data_security_mode      = "SINGLE_USER"
+
+  num_workers = 0 # Single-node mode
+
+  spark_conf = {
+    "spark.databricks.cluster.profile" = "singleNode"
+    "spark.master"                     = "local[*, 4]"
+
+    # Optimize for single-node execution
+    "spark.sql.shuffle.partitions" = "8"
+    "spark.default.parallelism"    = "8"
+
+    # Local disk optimization
+    "spark.databricks.io.cache.enabled" = "true"
+  }
+
+  # Single-node clusters don't require Photon
+
+  custom_tags = {
+    "ResourceClass" = "SingleNode"
+    "WorkloadType"  = "Small Data"
+    "Purpose"       = "Notebooks and ad-hoc analysis"
+  }
+}
+
+# ==============================================================================
+# Cluster Policy for Advanced Tuning Best Practices
+# ==============================================================================
+
+resource "databricks_cluster_policy" "advanced_tuning_guidelines" {
+  name = "Advanced Tuning - Best Practices Policy"
+
+  definition = jsonencode({
+    # Enforce memory optimization
+    "spark_conf.spark.memory.fraction" : {
+      "type" : "range",
+      "minValue" : "0.7",
+      "maxValue" : "0.85",
+      "defaultValue" : "0.8"
+    },
+
+    # Enforce Delta optimizations
+    "spark_conf.spark.databricks.delta.optimizeWrite.enabled" : {
+      "type" : "fixed",
+      "value" : "true"
+    },
+    "spark_conf.spark.databricks.delta.autoCompact.enabled" : {
+      "type" : "fixed",
+      "value" : "true"
+    },
+
+    # Enforce adaptive query execution
+    "spark_conf.spark.sql.adaptive.enabled" : {
+      "type" : "fixed",
+      "value" : "true"
+    },
+
+    # Photon recommendation (can be overridden)
+    "enable_photon" : {
+      "type" : "allowlist",
+      "values" : [true, false],
+      "defaultValue" : true
+    },
+
+    # Autotermination required
+    "autotermination_minutes" : {
+      "type" : "range",
+      "minValue" : 5,
+      "maxValue" : 120
+    }
+  })
+}
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+
+output "advanced_cluster_ids" {
+  description = "IDs of advanced tuned clusters"
+  value = {
+    heavy_etl       = try(databricks_cluster.heavy_etl_optimized["prod"].id, null)
+    ml_training_gpu = try(databricks_cluster.ml_training_gpu["prod"].id, null)
+    realtime        = try(databricks_cluster.realtime_analytics["prod"].id, null)
+    cost_optimized  = try(databricks_cluster.cost_optimized["dev"].id, null)
+    single_node     = try(databricks_cluster.single_node["dev"].id, null)
+  }
+}

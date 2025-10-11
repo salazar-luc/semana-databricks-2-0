@@ -1,0 +1,183 @@
+# ==============================================================================
+# Real-Time Streaming Infrastructure
+# ==============================================================================
+# This file configures Databricks clusters optimized for Structured Streaming
+# with Real-Time Mode features for low-latency data processing.
+
+# Data source for latest Spark version with streaming optimizations
+# Note: Commented out as it requires workspace to exist first
+# data "databricks_spark_version" "latest_lts" {
+#   long_term_support = true
+# }
+
+# Streaming Cluster - Optimized for Real-Time Mode
+resource "databricks_cluster" "streaming_realtime" {
+  for_each = var.enable_streaming ? toset(local.environments) : []
+
+  cluster_name            = "${local.env_config[each.key].name_prefix}-streaming-realtime"
+  spark_version           = var.spark_version  # Using variable instead of data source
+  node_type_id            = var.node_type_id
+  autotermination_minutes = 30
+  data_security_mode      = "USER_ISOLATION"
+
+  autoscale {
+    min_workers = each.key == "prod" ? 2 : 1
+    max_workers = each.key == "prod" ? 10 : 5
+  }
+
+  # Real-Time Streaming Optimizations
+  spark_conf = {
+    # Enable async checkpointing for lower latency
+    "spark.databricks.streaming.statefulOperator.asyncCheckpoint.enabled" = "true"
+
+    # Optimize forEach batch operations
+    "spark.databricks.streaming.forEachBatch.optimized.enabled" = "true"
+
+    # Enable real-time mode (preview feature)
+    "spark.databricks.streaming.realtime.mode.enabled" = "true"
+
+    # Reduce trigger interval for lower latency
+    "spark.sql.streaming.minBatchesToRetain" = "5"
+
+    # Delta optimizations for streaming writes
+    "spark.databricks.delta.optimizeWrite.enabled"                          = "true"
+    "spark.databricks.delta.autoCompact.enabled"                            = "true"
+    "spark.databricks.delta.properties.defaults.autoOptimize.optimizeWrite" = "true"
+    "spark.databricks.delta.properties.defaults.autoOptimize.autoCompact"   = "true"
+
+    # Adaptive Query Execution for streaming
+    "spark.sql.adaptive.enabled"                    = "true"
+    "spark.sql.adaptive.coalescePartitions.enabled" = "true"
+
+    # Increase parallelism for streaming workloads
+    "spark.sql.shuffle.partitions" = "200"
+    "spark.default.parallelism"    = "200"
+  }
+
+  # Photon is enabled by default in v15.4.x-photon runtime
+
+  custom_tags = {
+    "WorkloadType" = "Streaming"
+    "RealTimeMode" = "Enabled"
+    "Environment"  = each.key
+    "Purpose"      = "Real-time data processing"
+  }
+}
+
+# Event Hubs / Kafka Streaming Cluster (for external streaming sources)
+resource "databricks_cluster" "streaming_kafka" {
+  for_each = var.enable_streaming ? toset(local.environments) : []
+
+  cluster_name            = "${local.env_config[each.key].name_prefix}-streaming-kafka"
+  spark_version           = var.spark_version  # Using variable instead of data source
+  node_type_id            = var.node_type_id
+  autotermination_minutes = 30
+  data_security_mode      = "USER_ISOLATION"
+
+  autoscale {
+    min_workers = each.key == "prod" ? 3 : 2
+    max_workers = each.key == "prod" ? 15 : 8
+  }
+
+  spark_conf = {
+    # Kafka-specific optimizations
+    "spark.streaming.kafka.consumer.cache.enabled"          = "true"
+    "spark.streaming.kafka.consumer.cache.capacity"         = "128"
+    "spark.sql.streaming.kafka.useDeprecatedOffsetFetching" = "false"
+
+    # Real-time processing
+    "spark.databricks.streaming.statefulOperator.asyncCheckpoint.enabled" = "true"
+    "spark.databricks.streaming.forEachBatch.optimized.enabled"           = "true"
+
+    # Delta streaming optimizations
+    "spark.databricks.delta.optimizeWrite.enabled"                 = "true"
+    "spark.databricks.delta.autoCompact.enabled"                   = "true"
+    "spark.databricks.delta.merge.optimizeInsertOnlyMerge.enabled" = "true"
+
+    # Memory management for streaming
+    "spark.memory.fraction"        = "0.8"
+    "spark.memory.storageFraction" = "0.3"
+  }
+
+  # Photon is enabled by default in v15.4.x-photon runtime
+
+  # Kafka libraries (if needed)
+  library {
+    maven {
+      coordinates = "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0"
+    }
+  }
+
+  custom_tags = {
+    "WorkloadType" = "Streaming"
+    "Source"       = "Kafka"
+    "Environment"  = each.key
+  }
+}
+
+# Permissions for streaming clusters
+resource "databricks_permissions" "streaming_realtime" {
+  for_each = var.enable_streaming ? toset(local.environments) : []
+
+  cluster_id = databricks_cluster.streaming_realtime[each.key].id
+
+  access_control {
+    group_name       = databricks_group.data_engineers.display_name
+    permission_level = "CAN_RESTART"
+  }
+
+  access_control {
+    group_name       = databricks_group.data_scientists.display_name
+    permission_level = "CAN_ATTACH_TO"
+  }
+
+  depends_on = [
+    databricks_cluster.streaming_realtime
+  ]
+}
+
+# Cluster policy for streaming workloads
+resource "databricks_cluster_policy" "streaming_policy" {
+  name = "Streaming Workload Policy"
+
+  definition = jsonencode({
+    "cluster_type" : {
+      "type" : "fixed",
+      "value" : "all-purpose"
+    },
+    "spark_conf.spark.databricks.streaming.statefulOperator.asyncCheckpoint.enabled" : {
+      "type" : "fixed",
+      "value" : "true"
+    },
+    "spark_conf.spark.databricks.delta.optimizeWrite.enabled" : {
+      "type" : "fixed",
+      "value" : "true"
+    },
+    "spark_conf.spark.databricks.delta.autoCompact.enabled" : {
+      "type" : "fixed",
+      "value" : "true"
+    },
+    "enable_photon" : {
+      "type" : "fixed",
+      "value" : true
+    },
+    "autotermination_minutes" : {
+      "type" : "range",
+      "minValue" : 10,
+      "maxValue" : 120,
+      "defaultValue" : 30
+    }
+  })
+}
+
+# Outputs
+output "streaming_cluster_ids" {
+  description = "Cluster IDs for streaming workloads"
+  value = {
+    for env in keys(databricks_cluster.streaming_realtime) :
+    env => {
+      realtime = databricks_cluster.streaming_realtime[env].id
+      kafka    = databricks_cluster.streaming_kafka[env].id
+    }
+  }
+}
