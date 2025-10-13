@@ -1,0 +1,70 @@
+# ==============================================================================
+# CI Workflow: Validate DAB Configuration
+# ==============================================================================
+# Trigger: On pull requests and pushes to develop branch
+# Purpose: Validate bundle syntax and configuration before deployment
+# ==============================================================================
+
+name: CI - Validate Bundle
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - develop
+
+jobs:
+  validate:
+    name: Validate Databricks Asset Bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      # ----------------------------------------------------------------------
+      # Step 1: Checkout repository
+      # ----------------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------------------
+      # Step 2: Setup Databricks CLI
+      # ----------------------------------------------------------------------
+      - name: Setup Databricks CLI
+        uses: databricks/setup-cli@main
+
+      # ----------------------------------------------------------------------
+      # Step 3: Validate bundle for dev environment
+      # ----------------------------------------------------------------------
+      - name: Validate Bundle (dev)
+        run: databricks bundle validate --target dev
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+      # ----------------------------------------------------------------------
+      # Step 4: Validate bundle for prod environment
+      # ----------------------------------------------------------------------
+      - name: Validate Bundle (prod)
+        run: databricks bundle validate --target prod
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+      # ----------------------------------------------------------------------
+      # Step 5: Comment validation results on PR
+      # ----------------------------------------------------------------------
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Databricks Asset Bundle validation passed for all environments!'
+            })

@@ -1,0 +1,74 @@
+# ==============================================================================
+# CD Workflow: Deploy to Development Environment
+# ==============================================================================
+# Trigger: Push to develop branch or manual workflow dispatch
+# Purpose: Automatically deploy to shared dev environment
+# ==============================================================================
+
+name: CD - Deploy to Dev
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      # ----------------------------------------------------------------------
+      # Step 1: Checkout repository
+      # ----------------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------------------
+      # Step 2: Setup Databricks CLI
+      # ----------------------------------------------------------------------
+      - name: Setup Databricks CLI
+        uses: databricks/setup-cli@main
+
+      # ----------------------------------------------------------------------
+      # Step 3: Validate bundle configuration
+      # ----------------------------------------------------------------------
+      - name: Validate Bundle
+        run: databricks bundle validate --target dev
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+      # ----------------------------------------------------------------------
+      # Step 4: Deploy bundle to dev environment
+      # ----------------------------------------------------------------------
+      - name: Deploy Bundle
+        run: databricks bundle deploy --target dev
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+      # ----------------------------------------------------------------------
+      # Step 5: Run data quality checks (optional)
+      # ----------------------------------------------------------------------
+      - name: Run Data Quality Checks
+        run: databricks bundle run data_quality_checks --target dev
+        continue-on-error: true
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+      # ----------------------------------------------------------------------
+      # Step 6: Notify deployment status
+      # ----------------------------------------------------------------------
+      - name: Deployment Summary
+        run: |
+          echo "✅ Deployment to Development completed successfully!"
+          echo "🔗 Workspace: ${{ secrets.DATABRICKS_HOST }}"
+          echo "📦 Bundle: uber-eats-analytics"
+          echo "🎯 Target: dev"
